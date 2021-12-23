@@ -1,0 +1,10 @@
+name: AllObtainableItems
+version: '${project.version}'
+main: dev.qixils.collectathon.AllObtainableItems
+api-version: 1.18
+prefix: AOI
+authors:
+  - qixils
+  - LorenTzel
+description: Collect every item available in survival Minecraft
+website: https://github.com/qixils/all-obtainable-items
