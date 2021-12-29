@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-@SuppressWarnings({"UnstableApiUsage", "ResultOfMethodCallIgnored"})
+@SuppressWarnings({"UnstableApiUsage", "ResultOfMethodCallIgnored", "UnusedReturnValue"})
 public class FileSystemDataMap {
 	private final Gson GSON = new Gson();
 	private final Map<UUID, Set<String>> cache = new HashMap<>(1);
@@ -35,41 +35,29 @@ public class FileSystemDataMap {
 		this(directory.toFile());
 	}
 
-	public boolean isEmpty() {
-		return size() == 0;
-	}
-
-	public int size() {
-		return Objects.requireNonNull(directory.list(($, name) -> name.endsWith(".json"))).length;
-	}
-
-	public boolean containsKey(UUID key) {
-		if (key == null)
-			throw new NullPointerException("key cannot be null");
-		return cache.containsKey(key) || new File(directory, key + ".json").exists();
-	}
-
 	@Nullable
 	public Set<String> get(UUID key) {
 		if (key == null)
 			throw new NullPointerException("key cannot be null");
-		if (cache.containsKey(key))
-			return cache.get(key);
-		File file = new File(directory, key + ".json");
-		if (!file.exists())
-			return null;
+		synchronized (cache) {
+			if (cache.containsKey(key))
+				return cache.get(key);
+			File file = new File(directory, key + ".json");
+			if (!file.exists())
+				return null;
 
-		String[] array;
-		try {
-			array = GSON.fromJson(new FileReader(file), String[].class);
-		} catch (FileNotFoundException e) {
-			// TODO log error
-			return null;
+			String[] array;
+			try {
+				array = GSON.fromJson(new FileReader(file), String[].class);
+			} catch (FileNotFoundException e) {
+				// TODO log error
+				return null;
+			}
+
+			Set<String> set = Set.copyOf(Arrays.asList(array));
+			cache.put(key, set);
+			return set;
 		}
-
-		Set<String> set = Set.copyOf(Arrays.asList(array));
-		cache.put(key, set);
-		return set;
 	}
 
 	public Set<String> getOrEmpty(UUID key) {
@@ -81,36 +69,25 @@ public class FileSystemDataMap {
 		if (key == null)
 			throw new NullPointerException("key cannot be null");
 
-		// per java specification this method should return the removed value, but that might not
-		// yet be loaded, so we must ensure it is loaded by fetching it:
-		Set<String> old = cache.get(key);
+		synchronized (cache) {
+			// per java specification this method should return the removed value, but that might not
+			// yet be loaded, so we must ensure it is loaded by fetching it:
+			Set<String> old = cache.get(key);
 
-		File file = new File(directory, key + ".json");
-		try {
-			file.createNewFile();
-			// TODO: test that this properly wipes the file (ig not that it matters much)
-			GSON.toJson(
-					value,
-					new TypeToken<Set<String>>() {
-					}.getType(),
-					new FileWriter(file, false));
-		} catch (IOException e) {
-			// TODO log error
+			File file = new File(directory, key + ".json");
+			try {
+				file.createNewFile();
+				// TODO: test that this properly wipes the file (ig not that it matters much)
+				GSON.toJson(
+						value,
+						new TypeToken<Set<String>>() {
+						}.getType(),
+						new FileWriter(file, false));
+			} catch (IOException e) {
+				// TODO log error
+			}
+
+			return old;
 		}
-
-		return old;
-	}
-
-	public Set<String> remove(UUID key) {
-		if (key == null)
-			throw new NullPointerException("key cannot be null");
-
-		// per java specification this method should return the removed value, but that might not
-		// yet be loaded, so we must ensure it is loaded by fetching it:
-		cache.get(key);
-
-		new File(directory, key + ".json").delete();
-
-		return cache.remove(key);
 	}
 }
