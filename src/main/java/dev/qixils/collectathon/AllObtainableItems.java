@@ -132,11 +132,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 		// TODO potions
 		// TODO sussy stew
-		// TODO enchanted books
 		for (Enchantment enchantment : Enchantment.values()) {
 			ItemStack item = new ItemStack(Material.ENCHANTED_BOOK);
 			EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
 			meta.addStoredEnchant(enchantment, 1, false);
+			item.setItemMeta(meta);
+			items.add(item);
 		}
 		for (Axolotl.Variant variant : Axolotl.Variant.values()) {
 			ItemStack item = new ItemStack(Material.AXOLOTL_BUCKET);
@@ -260,4 +261,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		}
 		return false;
 	}
+
+	// event listeners
+	// TODO
 }
