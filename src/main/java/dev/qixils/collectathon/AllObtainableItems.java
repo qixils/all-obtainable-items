@@ -1,15 +1,20 @@
 package dev.qixils.collectathon;
 
 import io.papermc.lib.PaperLib;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.sound.Sound.Source;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.HumanEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
@@ -21,21 +26,29 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
-	private static @MonotonicNonNull List<String> ALL_KEYS = null;
+	private static final UUID ZERO_UUID = new UUID(0, 0);
+	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
+	private static @MonotonicNonNull Set<String> ALL_KEYS = null;
 	private static @MonotonicNonNull Logger logger;
-	private @MonotonicNonNull BukkitAudiences adventure;
-	private @MonotonicNonNull PlainTextComponentSerializer plainSerializer;
+	private @Nullable BukkitAudiences adventure;
+	private @Nullable PlainTextComponentSerializer plainSerializer;
+	private @Nullable FileSystemDataMap data;
+	private boolean coop = true;
 
 	public static String getKey(ItemStack item) {
 		Material type = item.getType();
@@ -80,15 +93,16 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return key.toString();
 	}
 
-	public static List<String> getAllKeys() {
-		if (ALL_KEYS != null)
-			return ALL_KEYS;
+	@SuppressWarnings("deprecation")
+	public static @NotNull List<ItemStack> getAllItems() {
+		if (ALL_ITEMS != null)
+			return ALL_ITEMS;
 
 		// initial capacity is a very rough estimate
 		int initialCapacity = Material.values().length
 				+ (PotionEffectType.values().length * 4)
 				+ Enchantment.values().length;
-		List<String> keys = new ArrayList<>(initialCapacity);
+		List<ItemStack> items = new ArrayList<>(initialCapacity);
 		Set<Material> exclude = Set.of(
 				Material.POTION,
 				Material.LINGERING_POTION,
@@ -103,7 +117,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				continue;
 			if (exclude.contains(material))
 				continue;
-			keys.add(material.getKey().getKey());
+			items.add(new ItemStack(material));
 		}
 
 		// TODO potions
@@ -111,7 +125,13 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		// TODO enchanted books
 		// TODO axolotl
 
-		return ALL_KEYS = List.copyOf(keys);
+		return ALL_ITEMS = List.copyOf(items);
+	}
+
+	public static @NotNull Set<String> getAllKeys() {
+		if (ALL_KEYS != null)
+			return ALL_KEYS;
+		return ALL_KEYS = getAllItems().stream().map(AllObtainableItems::getKey).collect(Collectors.toUnmodifiableSet());
 	}
 
 	// non-static stuff
@@ -150,6 +170,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	@Override
 	public void onEnable() {
 		logger = getLogger();
+		coop = getConfig().getBoolean("coop", coop);
 
 		PaperLib.suggestPaper(this, Level.WARNING);
 		this.adventure = BukkitAudiences.create(this);
@@ -161,6 +182,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		Bukkit.getScheduler().runTaskAsynchronously(this, AllObtainableItems::getAllKeys);
 		// register event handler
 		Bukkit.getPluginManager().registerEvents(this, this);
+
+		this.data = new FileSystemDataMap(new File(getDataFolder(), "data"));
 	}
 
 	@Override
@@ -169,16 +192,47 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			this.adventure.close();
 			this.adventure = null;
 		}
+		this.data = null;
 	}
 
 	public boolean isCoop() {
-		return false; // TODO
+		return coop;
 	}
 
-	public boolean collect(HumanEntity player, ItemStack item) {
-		//String key = getKey(item);
-		if (true) { // TODO: store to database if not present
-			// TODO: display
+	public boolean collect(@NotNull Player player, @NotNull ItemStack item) {
+		if (this.data == null)
+			return false;
+
+		Audience audience;
+		UUID uuid;
+
+		if (coop) {
+			audience = adventure().all();
+			uuid = ZERO_UUID;
+		} else {
+			audience = adventure().player(player);
+			uuid = player.getUniqueId();
+		}
+
+		String key = getKey(item);
+		Set<String> items = data.get(uuid);
+		if (!items.contains(key)) {
+			Set<String> newItems = new HashSet<>(items.size() + 1);
+			newItems.addAll(items);
+			newItems.add(key);
+			data.put(uuid, newItems);
+
+			audience.sendMessage(
+					Component.text().content("Acquired ").color(TextColor.color(0xfff8e7))
+							.append(getDisplayName(item).color(TextColor.color(0xFFEEC9)))
+							.append(Component.text('!'))
+			);
+			audience.playSound(Sound.sound(
+					Key.key(Key.MINECRAFT_NAMESPACE, "entity.firework_rocket.launch"),
+					Source.PLAYER,
+					1f,
+					1f
+			), Sound.Emitter.self());
 			return true;
 		}
 		return false;
