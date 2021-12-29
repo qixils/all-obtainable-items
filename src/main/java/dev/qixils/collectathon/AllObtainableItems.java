@@ -16,8 +16,14 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -263,5 +269,27 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	// event listeners
-	// TODO
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onPickupEvent(EntityPickupItemEvent event) {
+		if (event.getEntity() instanceof Player player) {
+			collect(player, event.getItem().getItemStack());
+		}
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onInventoryMoveItemEvent(InventoryMoveItemEvent event) {
+		if (event.getDestination().getHolder() instanceof Player player) {
+			collect(player, event.getItem());
+		}
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onInventoryClickEvent(InventoryClickEvent event) {
+		if (event.getCursor() != null
+				&& event.getClickedInventory() instanceof PlayerInventory
+				&& event.getClickedInventory().getHolder() instanceof Player player) {
+			collect(player, event.getCursor());
+		}
+	}
 }
