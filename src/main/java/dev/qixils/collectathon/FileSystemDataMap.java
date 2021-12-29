@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -48,6 +49,7 @@ public class FileSystemDataMap {
 		return cache.containsKey(key) || new File(directory, key + ".json").exists();
 	}
 
+	@Nullable
 	public Set<String> get(UUID key) {
 		if (key == null)
 			throw new NullPointerException("key cannot be null");
@@ -68,6 +70,10 @@ public class FileSystemDataMap {
 		Set<String> set = Set.copyOf(Arrays.asList(array));
 		cache.put(key, set);
 		return set;
+	}
+
+	public Set<String> getOrEmpty(UUID key) {
+		return Objects.requireNonNullElseGet(get(key), Collections::emptySet);
 	}
 
 	@Nullable

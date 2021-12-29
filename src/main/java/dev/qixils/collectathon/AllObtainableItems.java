@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -58,29 +60,32 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			return key.toString();
 
 		ItemMeta meta = item.getItemMeta();
-		if (meta instanceof PotionMeta potion) {
+		if (meta instanceof SuspiciousStewMeta stew) {
+			if (stew.hasCustomEffects()) {
+				key.append('|')
+						.append(stew.getCustomEffects().stream()
+								.map(effect -> effect.getType().getKey().getKey())
+								.sorted()
+								.collect(Collectors.joining(",")));
+			}
+		} else if (meta instanceof PotionMeta potion) {
+			if (type != Material.TIPPED_ARROW) {
+				key.delete(0, key.length());
+				key.append("potion");
+			}
 			if (potion.hasCustomEffects()) {
 				key.append('|')
 						.append(potion.getCustomEffects().stream()
-								.sorted(Comparator.comparing(effect -> effect.getType().getKey().getKey()))
-								.map(effect -> effect.getType().getKey().getKey() + "_x"
-										+ effect.getAmplifier() + ":" + effect.getDuration())
+								.map(effect -> effect.getType().getKey().getKey())
+								.sorted()
 								.collect(Collectors.joining(",")));
 			}
 		} else if (meta instanceof EnchantmentStorageMeta enchantments) {
 			if (enchantments.hasStoredEnchants()) {
 				key.append('|')
 						.append(enchantments.getStoredEnchants().entrySet().stream()
-								.sorted(Comparator.comparing(entry -> entry.getKey().getKey().getKey()))
 								.map(entry -> entry.getKey().getKey().getKey() + ':' + entry.getValue())
-								.collect(Collectors.joining(",")));
-			}
-		} else if (meta instanceof SuspiciousStewMeta stew) {
-			if (stew.hasCustomEffects()) {
-				key.append('|')
-						.append(stew.getCustomEffects().stream()
-								.sorted(Comparator.comparing(effect -> effect.getType().getKey().getKey()))
-								.map(effect -> effect.getType().getKey().getKey())
+								.sorted()
 								.collect(Collectors.joining(",")));
 			}
 		} else if (meta instanceof AxolotlBucketMeta bucket) {
@@ -89,14 +94,19 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				key.append('|').append(bucket.getVariant().name().toLowerCase(Locale.ENGLISH));
 			}
 		}
+		// TODO: "explorer" map (buried treasure/mansion/monument)
 
 		return key.toString();
 	}
 
+	// non-static stuff
+
 	@SuppressWarnings("deprecation")
-	public static @NotNull List<ItemStack> getAllItems() {
+	public @NotNull List<ItemStack> getAllItems() {
 		if (ALL_ITEMS != null)
 			return ALL_ITEMS;
+		if (plainSerializer == null)
+			return Collections.emptyList();
 
 		// initial capacity is a very rough estimate
 		int initialCapacity = Material.values().length
@@ -123,18 +133,31 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		// TODO potions
 		// TODO sussy stew
 		// TODO enchanted books
-		// TODO axolotl
+		for (Enchantment enchantment : Enchantment.values()) {
+			ItemStack item = new ItemStack(Material.ENCHANTED_BOOK);
+			EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
+			meta.addStoredEnchant(enchantment, 1, false);
+		}
+		for (Axolotl.Variant variant : Axolotl.Variant.values()) {
+			ItemStack item = new ItemStack(Material.AXOLOTL_BUCKET);
+			AxolotlBucketMeta meta = (AxolotlBucketMeta) item.getItemMeta();
+			meta.setVariant(variant);
+			item.setItemMeta(meta);
+			items.add(item);
+		}
+		// TODO: "explorer" map (buried treasure/mansion/monument)
 
-		return ALL_ITEMS = List.copyOf(items);
+		return ALL_ITEMS = items.stream().sorted(Comparator.comparing(item -> plainSerializer.serialize(getDisplayName(item)))).toList();
 	}
 
-	public static @NotNull Set<String> getAllKeys() {
+	public @NotNull Set<String> getAllKeys() {
 		if (ALL_KEYS != null)
 			return ALL_KEYS;
-		return ALL_KEYS = getAllItems().stream().map(AllObtainableItems::getKey).collect(Collectors.toUnmodifiableSet());
+		List<ItemStack> items = getAllItems();
+		if (items.isEmpty())
+			return Collections.emptySet();
+		return ALL_KEYS = items.stream().map(AllObtainableItems::getKey).collect(Collectors.toUnmodifiableSet());
 	}
-
-	// non-static stuff
 
 	public @NotNull BukkitAudiences adventure() {
 		if (adventure == null)
@@ -150,7 +173,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	public Component getDisplayName(ItemStack item) {
 		if (PaperLib.isPaper()) {
-			return item.displayName();
+			return item.displayName();// TODO: does this need .colorIfAbsent(item.getType().getItemRarity().getColor());
 		}
 		Material type = item.getType();
 		NamespacedKey key = type.getKey();
@@ -179,7 +202,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				.build();
 
 		// instantiate keys
-		Bukkit.getScheduler().runTaskAsynchronously(this, AllObtainableItems::getAllKeys);
+		Bukkit.getScheduler().runTaskAsynchronously(this, this::getAllKeys);
 		// register event handler
 		Bukkit.getPluginManager().registerEvents(this, this);
 
@@ -215,7 +238,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		}
 
 		String key = getKey(item);
-		Set<String> items = data.get(uuid);
+		Set<String> items = data.getOrEmpty(uuid);
 		if (!items.contains(key)) {
 			Set<String> newItems = new HashSet<>(items.size() + 1);
 			newItems.addAll(items);
@@ -224,7 +247,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 			audience.sendMessage(
 					Component.text().content("Acquired ").color(TextColor.color(0xfff8e7))
-							.append(getDisplayName(item).color(TextColor.color(0xFFEEC9)))
+							.append(getDisplayName(item))
 							.append(Component.text('!'))
 			);
 			audience.playSound(Sound.sound(
