@@ -4,6 +4,7 @@ import cloud.commandframework.ArgumentDescription;
 import cloud.commandframework.bukkit.BukkitCommandManager;
 import cloud.commandframework.execution.AsynchronousCommandExecutionCoordinator;
 import cloud.commandframework.paper.PaperCommandManager;
+import fr.minuskube.inv.InventoryManager;
 import io.papermc.lib.PaperLib;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
@@ -60,14 +61,36 @@ import java.util.stream.Collectors;
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static final UUID ZERO_UUID = new UUID(0, 0);
+	private static final Set<Material> EXCLUDE = Set.of(
+			Material.POTION,
+			Material.LINGERING_POTION,
+			Material.SPLASH_POTION,
+			Material.TIPPED_ARROW,
+			Material.ENCHANTED_BOOK,
+			Material.AXOLOTL_BUCKET,
+			Material.SUSPICIOUS_STEW,
+			Material.AIR,
+			Material.CAVE_AIR,
+			Material.VOID_AIR,
+			Material.BEDROCK,
+			Material.COMMAND_BLOCK,
+			Material.COMMAND_BLOCK_MINECART,
+			Material.CHAIN_COMMAND_BLOCK,
+			Material.REPEATING_COMMAND_BLOCK,
+			Material.STRUCTURE_BLOCK,
+			Material.STRUCTURE_VOID,
+			Material.SPAWNER
+	);
+
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
 	private static @MonotonicNonNull Set<String> ALL_KEYS = null;
+	private @MonotonicNonNull InventoryManager inventoryManager;
 	private @MonotonicNonNull BukkitCommandManager<CommandSender> commandManager;
+	private @Nullable FileSystemDataMap data;
 	private @Nullable BukkitAudiences adventure;
 	private @Nullable PlainTextComponentSerializer plainSerializer;
 	private @Nullable LegacyComponentSerializer legacySerializer;
 	private @Nullable BungeeComponentSerializer bungeeSerializer;
-	private @Nullable FileSystemDataMap data;
 	private boolean coop = true;
 
 	public static String getKey(ItemStack item) {
@@ -131,19 +154,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				+ (PotionEffectType.values().length * 4)
 				+ Enchantment.values().length;
 		List<ItemStack> items = new ArrayList<>(initialCapacity);
-		Set<Material> exclude = Set.of(
-				Material.POTION,
-				Material.LINGERING_POTION,
-				Material.SPLASH_POTION,
-				Material.TIPPED_ARROW,
-				Material.ENCHANTED_BOOK,
-				Material.AXOLOTL_BUCKET,
-				Material.SUSPICIOUS_STEW
-		);
 		for (Material material : Material.values()) {
 			if (material.isLegacy())
 				continue;
-			if (exclude.contains(material))
+			if (EXCLUDE.contains(material))
+				continue;
+			if (material.name().contains("SPAWN_EGG"))
 				continue;
 			items.add(new ItemStack(material));
 		}
@@ -202,6 +218,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return bungeeSerializer;
 	}
 
+	public InventoryManager getInventoryManager() {
+		if (inventoryManager == null)
+			throw new IllegalStateException("Tried to access inventory manager while plugin is disabled");
+		return inventoryManager;
+	}
+
 	public Component getDisplayName(ItemStack item) {
 		if (PaperLib.isPaper()) {
 			return item.displayName();// TODO: does this need .colorIfAbsent(item.getType().getItemRarity().getColor());
@@ -224,6 +246,9 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	@Override
 	public void onEnable() {
 		coop = getConfig().getBoolean("coop", coop);
+
+		inventoryManager = new InventoryManager(this);
+		inventoryManager.init();
 
 		PaperLib.suggestPaper(this, Level.WARNING);
 		this.adventure = BukkitAudiences.create(this);
@@ -278,7 +303,10 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		commandManager.command(commandManager.commandBuilder("items",
 						ArgumentDescription.of("Opens the obtainable items menu"), "aoi")
 				.senderType(Player.class)
-				.handler(context -> new ItemMenu(this, (Player) context.getSender(), null).open())
+				.handler(context -> {
+					ItemMenu menu = new ItemMenu(this, (Player) context.getSender(), null);
+					Bukkit.getScheduler().runTask(this, menu::open);
+				})
 		);
 	}
 
@@ -311,27 +339,31 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		}
 
 		String key = getKey(item);
-		Set<String> items = data.getOrEmpty(uuid);
-		if (!items.contains(key)) {
-			Set<String> newItems = new HashSet<>(items.size() + 1);
-			newItems.addAll(items);
-			newItems.add(key);
-			data.put(uuid, newItems);
+		if (!getAllKeys().contains(key))
+			return false;
 
-			audience.sendMessage(
-					Component.text().content("Acquired ").color(TextColor.color(0xfff8e7))
-							.append(getDisplayName(item))
-							.append(Component.text('!'))
-			);
-			audience.playSound(Sound.sound(
-					Key.key(Key.MINECRAFT_NAMESPACE, "entity.firework_rocket.launch"),
-					Source.PLAYER,
-					1f,
-					1f
-			), Sound.Emitter.self());
-			return true;
-		}
-		return false;
+		Set<String> items = data.getOrEmpty(uuid);
+		if (items.contains(key))
+			return false;
+
+		Set<String> newItems = new HashSet<>(items.size() + 1);
+		newItems.addAll(items);
+		newItems.add(key);
+		data.put(uuid, newItems);
+
+		audience.sendMessage(
+				Component.text().content("Acquired ").color(TextColor.color(0xfff8e7))
+						.append(getDisplayName(item))
+						.append(Component.text('!'))
+		);
+		audience.playSound(Sound.sound(
+				Key.key(Key.MINECRAFT_NAMESPACE, "entity.firework_rocket.launch"),
+				Source.PLAYER,
+				1f,
+				1f
+		), Sound.Emitter.self());
+
+		return true;
 	}
 
 	public FileSystemDataMap getData() {

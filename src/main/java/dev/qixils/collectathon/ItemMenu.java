@@ -2,17 +2,18 @@ package dev.qixils.collectathon;
 
 import dev.qixils.collectathon.filters.Filter;
 import dev.qixils.collectathon.filters.Filters;
-import io.github.leguan16.ClickableItem;
-import io.github.leguan16.SmartInventory;
-import io.github.leguan16.content.InventoryContents;
-import io.github.leguan16.content.InventoryProvider;
-import io.github.leguan16.content.Pagination;
-import io.github.leguan16.content.SlotIterator.Type;
+import fr.minuskube.inv.ClickableItem;
+import fr.minuskube.inv.SmartInventory;
+import fr.minuskube.inv.content.InventoryContents;
+import fr.minuskube.inv.content.InventoryProvider;
+import fr.minuskube.inv.content.Pagination;
+import fr.minuskube.inv.content.SlotIterator.Type;
 import io.papermc.lib.PaperLib;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.format.TextDecoration.State;
 import net.kyori.adventure.text.serializer.bungeecord.BungeeComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.md_5.bungee.api.chat.BaseComponent;
@@ -29,14 +30,9 @@ import java.util.List;
 import java.util.Objects;
 
 public class ItemMenu implements InventoryProvider {
-	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD);
+	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, State.FALSE);
 
-	private final SmartInventory inventory = SmartInventory.builder()
-			.provider(this)
-			.size(6, 9)
-			.title("All Obtainable Items")
-			.closeable(true)
-			.build();
+	private final SmartInventory inventory;
 	private final AllObtainableItems plugin;
 	private final Filters filterEnum;
 	private final Filter filter;
@@ -53,6 +49,13 @@ public class ItemMenu implements InventoryProvider {
 		this.originalPlayer = player;
 		this.plugin = plugin;
 		this.filter = this.filterEnum.createFilter(plugin, player);
+		this.inventory = SmartInventory.builder()
+				.provider(this)
+				.size(6, 9)
+				.title("All Obtainable Items")
+				.closeable(true)
+				.manager(plugin.getInventoryManager())
+				.build();
 	}
 
 	public SmartInventory getInventory() {
@@ -73,6 +76,7 @@ public class ItemMenu implements InventoryProvider {
 	@SuppressWarnings("deprecation")
 	@Override
 	public void init(Player player, InventoryContents contents) {
+		// TODO: pagination is displaying only 16 items
 		Pagination pagination = contents.pagination();
 		pagination.setItems(getItems());
 		pagination.setItemsPerPage(9 * 5);
@@ -106,11 +110,16 @@ public class ItemMenu implements InventoryProvider {
 				$ -> new ItemMenu(plugin, player, nextFilter()).getInventory().open(player)));
 	}
 
+	@Override
+	public void update(Player player, InventoryContents contents) {
+	}
+
 	public ClickableItem[] getItems() {
 		if (items != null)
 			return items;
 		List<ItemStack> itemStacks = new ArrayList<>(plugin.getAllItems());
 		itemStacks.removeIf(filter);
+		plugin.getLogger().warning("Size: " + itemStacks.size());
 		ClickableItem[] items = new ClickableItem[itemStacks.size()];
 		for (int i = 0; i < itemStacks.size(); i++) {
 			items[i] = ClickableItem.empty(itemStacks.get(i));
@@ -126,7 +135,7 @@ public class ItemMenu implements InventoryProvider {
 			TextColor color = this.filterEnum == filter
 					? NamedTextColor.AQUA
 					: NamedTextColor.DARK_AQUA;
-			lore.add(Component.text(filter.displayName(), color));
+			lore.add(Component.text(filter.displayName(), color).decoration(TextDecoration.ITALIC, State.FALSE));
 		}
 		return filterLore = Collections.unmodifiableList(lore);
 	}
@@ -161,7 +170,7 @@ public class ItemMenu implements InventoryProvider {
 	public ItemStack pageItemStack(int page) {
 		ItemStack item = new ItemStack(Material.ARROW);
 		ItemMeta meta = item.getItemMeta();
-		Component component = Component.text("Page " + page).decoration(TextDecoration.ITALIC, false);
+		Component component = Component.text("Page " + (page + 1)).decoration(TextDecoration.ITALIC, false);
 		if (PaperLib.isPaper())
 			meta.displayName(component);
 		else if (PaperLib.isSpigot())

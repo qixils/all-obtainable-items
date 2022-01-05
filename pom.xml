@@ -106,9 +106,9 @@
             <version>1.6.1</version>
         </dependency>
         <dependency>
-            <groupId>io.github.leguan16</groupId>
-            <artifactId>smartInvs</artifactId>
-            <version>1.2.0</version>
+            <groupId>fr.minuskube.inv</groupId>
+            <artifactId>smart-invs</artifactId>
+            <version>1.2.7</version>
         </dependency>
         <dependency>
             <groupId>me.lucko</groupId>

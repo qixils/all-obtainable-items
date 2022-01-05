@@ -4,12 +4,15 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,6 +26,7 @@ import java.util.UUID;
 
 @SuppressWarnings({"UnstableApiUsage", "ResultOfMethodCallIgnored", "UnusedReturnValue"})
 public class FileSystemDataMap {
+	private static final Logger logger = LoggerFactory.getLogger("AOI-FS-Data");
 	private final Gson GSON = new Gson();
 	private final Map<UUID, Set<String>> cache = new HashMap<>(1);
 	private final File directory;
@@ -52,9 +56,13 @@ public class FileSystemDataMap {
 			try {
 				array = GSON.fromJson(new FileReader(file), String[].class);
 			} catch (FileNotFoundException e) {
-				// TODO log error
+				logger.warn("File " + file.getPath() + " disappeared (it theoretically exists but cannot be found)");
 				return null;
 			}
+
+			// failsafe for handling empty (corrupted) files
+			if (array == null)
+				return null;
 
 			Set<String> set = Set.copyOf(Arrays.asList(array));
 			cache.put(key, set);
@@ -72,24 +80,23 @@ public class FileSystemDataMap {
 			throw new NullPointerException("key cannot be null");
 
 		synchronized (cache) {
-			// per java specification this method should return the removed value, but that might not
-			// yet be loaded, so we must ensure it is loaded by fetching it:
-			Set<String> old = cache.get(key);
-
 			File file = new File(directory, key + ".json");
 			try {
 				file.createNewFile();
-				// TODO: test that this properly wipes the file (ig not that it matters much)
+				Type type = new TypeToken<Set<String>>() {
+				}.getType();
+				FileWriter writer = new FileWriter(file, false);
 				GSON.toJson(
 						value,
-						new TypeToken<Set<String>>() {
-						}.getType(),
-						new FileWriter(file, false));
+						type,
+						writer
+				);
+				writer.close();
 			} catch (IOException e) {
-				// TODO log error
+				logger.warn("Failed to save data to file", e);
 			}
 
-			return old;
+			return cache.put(key, value);
 		}
 	}
 }
