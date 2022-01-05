@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+// TODO: this does not work. saved files are blank
+
 @SuppressWarnings({"UnstableApiUsage", "ResultOfMethodCallIgnored", "UnusedReturnValue"})
 public class FileSystemDataMap {
 	private final Gson GSON = new Gson();

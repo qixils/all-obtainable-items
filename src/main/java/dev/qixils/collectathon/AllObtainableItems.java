@@ -1,5 +1,9 @@
 package dev.qixils.collectathon;
 
+import cloud.commandframework.ArgumentDescription;
+import cloud.commandframework.bukkit.BukkitCommandManager;
+import cloud.commandframework.execution.AsynchronousCommandExecutionCoordinator;
+import cloud.commandframework.paper.PaperCommandManager;
 import io.papermc.lib.PaperLib;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.key.Key;
@@ -9,10 +13,13 @@ import net.kyori.adventure.sound.Sound.Source;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.serializer.bungeecord.BungeeComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Player;
@@ -44,17 +51,22 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+// TODO: bossbar(s)
+// TODO: scoreboard
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static final UUID ZERO_UUID = new UUID(0, 0);
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
 	private static @MonotonicNonNull Set<String> ALL_KEYS = null;
-	private static @MonotonicNonNull Logger logger;
+	private @MonotonicNonNull BukkitCommandManager<CommandSender> commandManager;
 	private @Nullable BukkitAudiences adventure;
 	private @Nullable PlainTextComponentSerializer plainSerializer;
+	private @Nullable LegacyComponentSerializer legacySerializer;
+	private @Nullable BungeeComponentSerializer bungeeSerializer;
 	private @Nullable FileSystemDataMap data;
 	private boolean coop = true;
 
@@ -178,6 +190,18 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return plainSerializer;
 	}
 
+	public @NotNull LegacyComponentSerializer legacySerializer() {
+		if (legacySerializer == null)
+			throw new IllegalStateException("Tried to access adventure while plugin is disabled");
+		return legacySerializer;
+	}
+
+	public @NotNull BungeeComponentSerializer bungeeSerializer() {
+		if (bungeeSerializer == null)
+			throw new IllegalStateException("Tried to access adventure while plugin is disabled");
+		return bungeeSerializer;
+	}
+
 	public Component getDisplayName(ItemStack item) {
 		if (PaperLib.isPaper()) {
 			return item.displayName();// TODO: does this need .colorIfAbsent(item.getType().getItemRarity().getColor());
@@ -199,7 +223,6 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	@Override
 	public void onEnable() {
-		logger = getLogger();
 		coop = getConfig().getBoolean("coop", coop);
 
 		PaperLib.suggestPaper(this, Level.WARNING);
@@ -207,6 +230,10 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		this.plainSerializer = PlainTextComponentSerializer.builder()
 				.flattener(this.adventure.flattener())
 				.build();
+		this.legacySerializer = LegacyComponentSerializer.legacySection().toBuilder()
+				.flattener(this.adventure.flattener())
+				.build();
+		this.bungeeSerializer = BungeeComponentSerializer.get();
 
 		// instantiate keys
 		Bukkit.getScheduler().runTaskAsynchronously(this, this::getAllKeys);
@@ -214,6 +241,45 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		Bukkit.getPluginManager().registerEvents(this, this);
 
 		this.data = new FileSystemDataMap(new File(getDataFolder(), "data"));
+
+		// command stuff
+		try {
+			if (PaperLib.isPaper()) {
+				commandManager = new PaperCommandManager<>(
+						this,
+						AsynchronousCommandExecutionCoordinator.<CommandSender>newBuilder()
+								.withExecutor(command -> Bukkit.getScheduler().runTaskAsynchronously(this, command))
+								.withAsynchronousParsing()
+								.build(),
+						Function.identity(),
+						Function.identity()
+				);
+			} else {
+				commandManager = new BukkitCommandManager<>(
+						this,
+						AsynchronousCommandExecutionCoordinator.<CommandSender>newBuilder()
+								.withExecutor(command -> Bukkit.getScheduler().runTaskAsynchronously(this, command))
+								.withAsynchronousParsing()
+								.build(),
+						Function.identity(),
+						Function.identity()
+				);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Could not instantiate command manager", e);
+		}
+
+		try {
+			commandManager.registerBrigadier();
+		} catch (final Exception e) {
+			getLogger().log(Level.WARNING, "Failed to initialize Brigadier support", e);
+		}
+
+		commandManager.command(commandManager.commandBuilder("items",
+						ArgumentDescription.of("Opens the obtainable items menu"), "aoi")
+				.senderType(Player.class)
+				.handler(context -> new ItemMenu(this, (Player) context.getSender(), null).open())
+		);
 	}
 
 	@Override
@@ -266,6 +332,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			return true;
 		}
 		return false;
+	}
+
+	public FileSystemDataMap getData() {
+		if (data == null)
+			throw new IllegalStateException("Tried to access data before plugin loaded");
+		return data;
 	}
 
 	// event listeners

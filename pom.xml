@@ -13,7 +13,7 @@
 
     <description>Collect every item available in survival Minecraft</description>
     <properties>
-        <java.version>17</java.version>
+        <java.version>16</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <url>https://github.com/qixils/all-obtainable-items</url>
@@ -52,6 +52,10 @@
                                 <relocation>
                                     <pattern>io.papermc.lib</pattern>
                                     <shadedPattern>dev.qixils.collectathon.paperlib</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>me.lucko.commodore</pattern>
+                                    <shadedPattern>dev.qixils.collectathon.commodore</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
@@ -95,6 +99,21 @@
             <groupId>net.kyori</groupId>
             <artifactId>adventure-platform-bukkit</artifactId>
             <version>4.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>cloud.commandframework</groupId>
+            <artifactId>cloud-paper</artifactId>
+            <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.leguan16</groupId>
+            <artifactId>smartInvs</artifactId>
+            <version>1.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>me.lucko</groupId>
+            <artifactId>commodore</artifactId>
+            <version>1.11</version>
         </dependency>
     </dependencies>
 </project>
