@@ -44,6 +44,9 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SuspiciousStewMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Scoreboard;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -62,8 +65,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-
-// TODO: scoreboard
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static final UUID ZERO_UUID = new UUID(0, 0);
@@ -94,6 +95,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private @MonotonicNonNull InventoryManager inventoryManager;
 	private @MonotonicNonNull BukkitCommandManager<CommandSender> commandManager;
 	private @Nullable FileSystemDataMap data;
+	private @Nullable Objective objective;
 	private @Nullable BukkitAudiences adventure;
 	private @Nullable PlainTextComponentSerializer plainSerializer;
 	private @Nullable LegacyComponentSerializer legacySerializer;
@@ -233,7 +235,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	public Component getDisplayName(ItemStack item) {
 		if (PaperLib.isPaper()) {
-			return item.displayName();// TODO: does this need .colorIfAbsent(item.getType().getItemRarity().getColor());
+			// TODO remove custom item stack name
+			return item.displayName();
 		}
 		Material type = item.getType();
 		NamespacedKey key = type.getKey();
@@ -248,6 +251,11 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		// append misc info
 		// TODO
 		return builder.build();
+	}
+
+	@Override
+	public void onLoad() {
+		saveDefaultConfig();
 	}
 
 	@Override
@@ -267,12 +275,21 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				.build();
 		this.bungeeSerializer = BungeeComponentSerializer.get();
 
-		// instantiate keys
-		Bukkit.getScheduler().runTaskAsynchronously(this, this::getAllKeys);
 		// register event handler
 		Bukkit.getPluginManager().registerEvents(this, this);
 
 		this.data = new FileSystemDataMap(new File(getDataFolder(), "data"));
+
+		if (!isCoop()) {
+			Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
+			Component name = Component.text("Collectathon Progress", NamedTextColor.YELLOW);
+			if (PaperLib.isPaper())
+				objective = scoreboard.registerNewObjective("collectathon", "dummy", name);
+			else //noinspection deprecation
+				objective = scoreboard.registerNewObjective("collectathon", "dummy", plainSerializer().serialize(name));
+			objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+			objective.getScore(LegacyComponentSerializer.SECTION_CHAR + "eGoal").setScore(getAllKeys().size());
+		}
 
 		// command stuff
 		try {
@@ -382,6 +399,9 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		int total = getAllItems().size();
 		bossBar.name(Component.text("Collectathon Progress: " + collected + " out of " + total, NamedTextColor.YELLOW));
 		bossBar.progress(((float) collected) / total);
+
+		if (objective != null)
+			objective.getScore(player).setScore(collected);
 
 		return true;
 	}
