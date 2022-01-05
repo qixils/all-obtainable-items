@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+// TODO: add SFX to buttons?
 public class ItemMenu implements InventoryProvider {
 	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, State.FALSE);
 

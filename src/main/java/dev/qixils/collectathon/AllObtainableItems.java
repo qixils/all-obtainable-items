@@ -7,12 +7,16 @@ import cloud.commandframework.paper.PaperCommandManager;
 import fr.minuskube.inv.InventoryManager;
 import io.papermc.lib.PaperLib;
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.bossbar.BossBar.Color;
+import net.kyori.adventure.bossbar.BossBar.Overlay;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.sound.Sound.Source;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.bungeecord.BungeeComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -30,6 +34,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
@@ -47,16 +52,17 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-// TODO: bossbar(s)
 // TODO: scoreboard
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
@@ -84,6 +90,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
 	private static @MonotonicNonNull Set<String> ALL_KEYS = null;
+	private final @NotNull Map<UUID, BossBar> bossBarMap = new HashMap<>(1);
 	private @MonotonicNonNull InventoryManager inventoryManager;
 	private @MonotonicNonNull BukkitCommandManager<CommandSender> commandManager;
 	private @Nullable FileSystemDataMap data;
@@ -323,6 +330,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return coop;
 	}
 
+	private UUID getUUID(Player sender) {
+		if (isCoop())
+			return ZERO_UUID;
+		return sender.getUniqueId();
+	}
+
 	public boolean collect(@NotNull Player player, @NotNull ItemStack item) {
 		if (this.data == null)
 			return false;
@@ -363,6 +376,13 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				1f
 		), Sound.Emitter.self());
 
+		BossBar bossBar = bossBarMap.get(uuid);
+		assert bossBar != null : "Boss bar was null for " + player.getName() + " but should've been instantiated on player join";
+		int collected = newItems.size();
+		int total = getAllItems().size();
+		bossBar.name(Component.text("Collectathon Progress: " + collected + " out of " + total, NamedTextColor.YELLOW));
+		bossBar.progress(((float) collected) / total);
+
 		return true;
 	}
 
@@ -373,6 +393,20 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	// event listeners
+
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onPlayerJoin(PlayerJoinEvent event) {
+		adventure().player(event.getPlayer()).showBossBar(bossBarMap.computeIfAbsent(getUUID(event.getPlayer()), uuid -> {
+			int collected = getData().getOrEmpty(uuid).size();
+			int total = getAllItems().size();
+			return BossBar.bossBar(
+					Component.text("Collectathon Progress: " + collected + " out of " + total, NamedTextColor.YELLOW),
+					((float) collected) / total,
+					Color.YELLOW,
+					Overlay.PROGRESS
+			);
+		}));
+	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onPickupEvent(EntityPickupItemEvent event) {
