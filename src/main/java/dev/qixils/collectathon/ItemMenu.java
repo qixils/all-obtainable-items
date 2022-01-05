@@ -17,6 +17,7 @@ import net.kyori.adventure.text.format.TextDecoration.State;
 import net.kyori.adventure.text.serializer.bungeecord.BungeeComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.md_5.bungee.api.chat.BaseComponent;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -56,6 +57,8 @@ public class ItemMenu implements InventoryProvider {
 				.closeable(true)
 				.manager(plugin.getInventoryManager())
 				.build();
+
+		getItems(); // create item array while async
 	}
 
 	public SmartInventory getInventory() {
@@ -66,6 +69,13 @@ public class ItemMenu implements InventoryProvider {
 		int target = filterEnum.ordinal() + 1;
 		if (target == Filters.values().length)
 			target = 0;
+		return Filters.fromOrdinal(target);
+	}
+
+	private Filters previousFilter() {
+		int target = filterEnum.ordinal() - 1;
+		if (target == -1)
+			target = Filters.values().length - 1;
 		return Filters.fromOrdinal(target);
 	}
 
@@ -106,8 +116,12 @@ public class ItemMenu implements InventoryProvider {
 			meta.setLore(getLegacyFilterLore());
 		}
 		item.setItemMeta(meta);
-		contents.set(5, 4, ClickableItem.of(item,
-				$ -> new ItemMenu(plugin, player, nextFilter()).getInventory().open(player)));
+		contents.set(5, 4, ClickableItem.of(item, event -> {
+			Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+				ItemMenu newMenu = new ItemMenu(plugin, player, event.isLeftClick() ? nextFilter() : previousFilter());
+				Bukkit.getScheduler().runTask(plugin, () -> newMenu.getInventory().open(player));
+			});
+		}));
 	}
 
 	@Override
@@ -119,7 +133,6 @@ public class ItemMenu implements InventoryProvider {
 			return items;
 		List<ItemStack> itemStacks = new ArrayList<>(plugin.getAllItems());
 		itemStacks.removeIf(filter);
-		plugin.getLogger().warning("Size: " + itemStacks.size());
 		ClickableItem[] items = new ClickableItem[itemStacks.size()];
 		for (int i = 0; i < itemStacks.size(); i++) {
 			items[i] = ClickableItem.empty(itemStacks.get(i));
