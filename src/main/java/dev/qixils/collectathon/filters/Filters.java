@@ -23,7 +23,7 @@ public enum Filters {
 			return new HideCollectedFilter(plugin, player);
 		}
 	},
-	HIDE_UNCOLLECTED("Hide Uncollected") {
+	HIDE_UNCOLLECTED("Show Collected") {
 		@Override
 		public Filter createFilter(AllObtainableItems plugin, Player player) {
 			return new HideUncollectedFilter(plugin, player);

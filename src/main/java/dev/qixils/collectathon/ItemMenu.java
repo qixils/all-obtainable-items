@@ -87,7 +87,7 @@ public class ItemMenu implements InventoryProvider {
 	@SuppressWarnings("deprecation")
 	@Override
 	public void init(Player player, InventoryContents contents) {
-		// TODO: pagination is displaying only 16 items
+		// TODO: pagination is displaying only up to the Activator Rail for all/uncollected items
 		Pagination pagination = contents.pagination();
 		pagination.setItems(getItems());
 		pagination.setItemsPerPage(9 * 5);
@@ -117,12 +117,10 @@ public class ItemMenu implements InventoryProvider {
 			meta.setLore(getLegacyFilterLore());
 		}
 		item.setItemMeta(meta);
-		contents.set(5, 4, ClickableItem.of(item, event -> {
-			Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-				ItemMenu newMenu = new ItemMenu(plugin, player, event.isLeftClick() ? nextFilter() : previousFilter());
-				Bukkit.getScheduler().runTask(plugin, () -> newMenu.getInventory().open(player));
-			});
-		}));
+		contents.set(5, 4, ClickableItem.of(item, event -> Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+			ItemMenu newMenu = new ItemMenu(plugin, player, event.isLeftClick() ? nextFilter() : previousFilter());
+			Bukkit.getScheduler().runTask(plugin, () -> newMenu.getInventory().open(player));
+		})));
 	}
 
 	@Override

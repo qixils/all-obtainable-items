@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 
 public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static final UUID ZERO_UUID = new UUID(0, 0);
+	private static final String OBJECTIVE_NAME = "collectathon";
 	private static final Set<Material> EXCLUDE = Set.of(
 			Material.POTION,
 			Material.LINGERING_POTION,
@@ -93,6 +94,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static @MonotonicNonNull Set<String> ALL_KEYS = null;
 	private final @NotNull Map<UUID, BossBar> bossBarMap = new HashMap<>(1);
 	private @MonotonicNonNull InventoryManager inventoryManager;
+	@SuppressWarnings("FieldCanBeLocal")
 	private @MonotonicNonNull BukkitCommandManager<CommandSender> commandManager;
 	private @Nullable FileSystemDataMap data;
 	private @Nullable Objective objective;
@@ -235,7 +237,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	public Component getDisplayName(ItemStack item) {
 		if (PaperLib.isPaper()) {
-			// TODO remove custom item stack name
+			// TODO remove custom item stack name (but only if it's TextComponent ??)
 			return item.displayName();
 		}
 		Material type = item.getType();
@@ -282,12 +284,15 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 		if (!isCoop()) {
 			Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
-			Component name = Component.text("Collectathon Progress", NamedTextColor.YELLOW);
-			if (PaperLib.isPaper())
-				objective = scoreboard.registerNewObjective("collectathon", "dummy", name);
-			else //noinspection deprecation
-				objective = scoreboard.registerNewObjective("collectathon", "dummy", plainSerializer().serialize(name));
-			objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+			objective = scoreboard.getObjective(OBJECTIVE_NAME);
+			if (objective == null) {
+				Component name = Component.text("Collectathon Progress", NamedTextColor.YELLOW);
+				if (PaperLib.isPaper())
+					objective = scoreboard.registerNewObjective(OBJECTIVE_NAME, "dummy", name);
+				else //noinspection deprecation
+					objective = scoreboard.registerNewObjective(OBJECTIVE_NAME, "dummy", plainSerializer().serialize(name));
+				objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+			}
 			objective.getScore(LegacyComponentSerializer.SECTION_CHAR + "eGoal").setScore(getAllKeys().size());
 		}
 
@@ -347,7 +352,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return coop;
 	}
 
-	private UUID getUUID(Player sender) {
+	public UUID getUUID(Player sender) {
 		if (isCoop())
 			return ZERO_UUID;
 		return sender.getUniqueId();
@@ -413,6 +418,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	// event listeners
+	// TODO: certain inventory events are not working (click and drag, shift click)
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onPlayerJoin(PlayerJoinEvent event) {

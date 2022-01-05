@@ -6,13 +6,11 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Set;
 
-// TODO: seemingly broken
-
 public class HideCollectedFilter implements Filter {
 	private final Set<String> keys;
 
 	public HideCollectedFilter(AllObtainableItems plugin, Player player) {
-		this.keys = plugin.getData().getOrEmpty(player.getUniqueId());
+		this.keys = plugin.getData().getOrEmpty(plugin.getUUID(player));
 	}
 
 	@Override
