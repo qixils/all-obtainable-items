@@ -32,7 +32,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
@@ -418,7 +420,6 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	// event listeners
-	// TODO: certain inventory events are not working (click and drag, shift click)
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onPlayerJoin(PlayerJoinEvent event) {
@@ -442,18 +443,17 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onInventoryMoveItemEvent(InventoryMoveItemEvent event) {
-		if (event.getDestination().getHolder() instanceof Player player) {
-			collect(player, event.getItem());
+	public void onInventoryCloseEvent(InventoryCloseEvent event) {
+		if (event.getPlayer() instanceof Player player) {
+			player.getInventory().forEach(item -> collect(player, item));
 		}
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onInventoryClickEvent(InventoryClickEvent event) {
-		if (event.getCursor() != null
-				&& event.getClickedInventory() instanceof PlayerInventory
-				&& event.getClickedInventory().getHolder() instanceof Player player) {
-			collect(player, event.getCursor());
+	public void onCraftItemEvent(CraftItemEvent event) {
+		// TODO: test to make sure this does not fire every time a recipe is completed in the crafting matrix
+		if (event.getWhoClicked() instanceof Player player) {
+			collect(player, event.getRecipe().getResult());
 		}
 	}
 }

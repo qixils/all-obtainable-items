@@ -19,6 +19,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.md_5.bungee.api.chat.BaseComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -30,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-// TODO: add SFX to buttons?
 public class ItemMenu implements InventoryProvider {
 	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, State.FALSE);
 
@@ -89,19 +89,25 @@ public class ItemMenu implements InventoryProvider {
 	public void init(Player player, InventoryContents contents) {
 		// TODO: pagination is displaying only up to the Activator Rail for all/uncollected items
 		Pagination pagination = contents.pagination();
-		pagination.setItems(getItems());
 		pagination.setItemsPerPage(9 * 5);
+		pagination.setItems(getItems());
 		pagination.addToIterator(contents.newIterator(Type.HORIZONTAL, 0, 0));
 
 		// previous page
 		if (!pagination.isFirst()) {
 			int previousPage = pagination.previous().getPage();
-			contents.set(5, 0, ClickableItem.of(pageItemStack(previousPage), $ -> inventory.open(player, previousPage)));
+			contents.set(5, 0, ClickableItem.of(pageItemStack(previousPage), $ -> {
+				inventory.open(player, previousPage);
+				playClickSound(player);
+			}));
 		}
 		// next page
 		if (!pagination.isLast()) {
 			int nextPage = pagination.next().getPage();
-			contents.set(5, 8, ClickableItem.of(pageItemStack(nextPage), $ -> inventory.open(player, nextPage)));
+			contents.set(5, 8, ClickableItem.of(pageItemStack(nextPage), $ -> {
+				inventory.open(player, nextPage);
+				playClickSound(player);
+			}));
 		}
 		// filter
 		ItemStack item = new ItemStack(Material.HOPPER);
@@ -120,6 +126,7 @@ public class ItemMenu implements InventoryProvider {
 		contents.set(5, 4, ClickableItem.of(item, event -> Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
 			ItemMenu newMenu = new ItemMenu(plugin, player, event.isLeftClick() ? nextFilter() : previousFilter());
 			Bukkit.getScheduler().runTask(plugin, () -> newMenu.getInventory().open(player));
+			playClickSound(player);
 		})));
 	}
 
@@ -191,5 +198,9 @@ public class ItemMenu implements InventoryProvider {
 			meta.setDisplayName(plugin.legacySerializer().serialize(component));
 		item.setItemMeta(meta);
 		return item;
+	}
+
+	private void playClickSound(Player player) {
+		player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 0.8f, 2);
 	}
 }
