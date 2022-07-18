@@ -71,6 +71,12 @@ import java.util.stream.Collectors;
 public final class AllObtainableItems extends JavaPlugin implements Listener {
 	private static final UUID ZERO_UUID = new UUID(0, 0);
 	private static final String OBJECTIVE_NAME = "collectathon";
+	private static final Sound ACQUIRE_SOUND = Sound.sound(
+			Key.key(Key.MINECRAFT_NAMESPACE, "entity.firework_rocket.launch"),
+			Source.PLAYER,
+			1f,
+			1f
+	);
 	private static final Set<Material> EXCLUDE = Set.of(
 			Material.POTION,
 			Material.LINGERING_POTION,
@@ -361,7 +367,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 	}
 
 	public boolean collect(@NotNull Player player, @Nullable ItemStack item) {
-		if (this.data == null)
+		if (data == null)
 			return false;
 		if (item == null)
 			return false;
@@ -370,10 +376,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		UUID uuid;
 
 		if (coop) {
-			audience = adventure().all();
+			// usage of PaperLib here is working around an issue with adventure platform (#97)
+			audience = PaperLib.isPaper() ? Bukkit.getServer() : adventure().all();
 			uuid = ZERO_UUID;
 		} else {
-			audience = adventure().player(player);
+			// usage of PaperLib here is working around an issue with adventure platform (#97)
+			audience = PaperLib.isPaper() ? player : adventure().player(player);
 			uuid = player.getUniqueId();
 		}
 
@@ -395,12 +403,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 						.append(getDisplayName(item))
 						.append(Component.text('!'))
 		);
-		audience.playSound(Sound.sound(
-				Key.key(Key.MINECRAFT_NAMESPACE, "entity.firework_rocket.launch"),
-				Source.PLAYER,
-				1f,
-				1f
-		), Sound.Emitter.self());
+
+		// usage of PaperLib here is working around an issue with adventure platform (#97)
+		if (PaperLib.isPaper())
+			audience.playSound(ACQUIRE_SOUND, Sound.Emitter.self());
+		else
+			audience.playSound(ACQUIRE_SOUND);
 
 		BossBar bossBar = bossBarMap.get(uuid);
 		assert bossBar != null : "Boss bar was null for " + player.getName() + " but should've been instantiated on player join";
