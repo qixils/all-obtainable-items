@@ -2,6 +2,7 @@ package dev.qixils.collectathon.filters;
 
 import dev.qixils.collectathon.AllObtainableItems;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -10,7 +11,12 @@ import java.util.Map;
 
 public enum Filters {
 	SHOW_ALL("Show All") {
-		private final Filter filter = item -> false;
+		private final Filter filter = new AbstractFilter() {
+			@Override
+			public boolean test(ItemStack item) {
+				return false;
+			}
+		};
 
 		@Override
 		public Filter createFilter(AllObtainableItems plugin, Player player) {

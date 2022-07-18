@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class ItemMenu implements InventoryProvider {
 	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, State.FALSE);
@@ -42,7 +43,7 @@ public class ItemMenu implements InventoryProvider {
 	private final Filter filter;
 	private final Player originalPlayer;
 	private final AtomicInteger page = new AtomicInteger(0);
-	private ClickableItem[] items = null;
+	private @Nullable List<ClickableItem> items = null;
 	private List<Component> filterLore = null;
 	private List<BaseComponent[]> bungeeFilterLore = null;
 	private List<String> legacyFilterLore = null;
@@ -91,12 +92,12 @@ public class ItemMenu implements InventoryProvider {
 	@Override
 	public void init(Player player, InventoryContents contents) {
 		final int curPage = page.get();
-		final ClickableItem[] items = getItems();
+		final List<ClickableItem> items = getItems();
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			int index = curPage * ITEMS_PER_PAGE + i;
-			if (index >= items.length)
+			if (index >= items.size())
 				break;
-			ClickableItem item = items[index];
+			ClickableItem item = items.get(index);
 			contents.set(i / 9, i % 9, item);
 		}
 
@@ -106,7 +107,7 @@ public class ItemMenu implements InventoryProvider {
 		else
 			contents.set(5, 0, ClickableItem.empty(new ItemStack(Material.AIR)));
 		// next page
-		if (curPage < (items.length / ITEMS_PER_PAGE))
+		if (curPage < (items.size() / ITEMS_PER_PAGE))
 			contents.set(5, 8, pageClickableItem(curPage + 1, player, contents));
 		else
 			contents.set(5, 8, ClickableItem.empty(new ItemStack(Material.AIR)));
@@ -135,16 +136,13 @@ public class ItemMenu implements InventoryProvider {
 	public void update(Player player, InventoryContents contents) {
 	}
 
-	public ClickableItem[] getItems() {
+	public @NotNull List<ClickableItem> getItems() {
 		if (items != null)
 			return items;
-		List<ItemStack> itemStacks = new ArrayList<>(plugin.getAllItems());
-		itemStacks.removeIf(filter);
-		ClickableItem[] items = new ClickableItem[itemStacks.size()];
-		for (int i = 0; i < itemStacks.size(); i++) {
-			items[i] = ClickableItem.empty(itemStacks.get(i));
-		}
-		return this.items = items;
+		return plugin.getAllItems().stream()
+				.filter(filter.invert())
+				.map(ClickableItem::empty)
+				.collect(Collectors.toList());
 	}
 
 	public List<Component> getFilterItemLore() {

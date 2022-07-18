@@ -13,4 +13,14 @@ public interface Filter extends Predicate<ItemStack> {
 	 * @return {@code true} if the item should be hidden
 	 */
 	boolean test(ItemStack item);
+
+	/**
+	 * Creates a new filter which returns {@code false} if the item should be hidden instead of
+	 * {@code true}.
+	 *
+	 * @return new inverted filter
+	 */
+	default Filter invert() {
+		return new InvertedFilter(this);
+	}
 }

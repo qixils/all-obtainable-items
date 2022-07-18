@@ -6,7 +6,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Set;
 
-public class HideCollectedFilter implements Filter {
+public class HideCollectedFilter extends AbstractFilter {
 	private final Set<String> keys;
 
 	public HideCollectedFilter(AllObtainableItems plugin, Player player) {
