@@ -360,8 +360,10 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		return sender.getUniqueId();
 	}
 
-	public boolean collect(@NotNull Player player, @NotNull ItemStack item) {
+	public boolean collect(@NotNull Player player, @Nullable ItemStack item) {
 		if (this.data == null)
+			return false;
+		if (item == null)
 			return false;
 
 		Audience audience;

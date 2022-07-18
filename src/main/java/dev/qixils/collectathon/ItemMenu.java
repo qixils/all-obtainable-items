@@ -30,15 +30,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ItemMenu implements InventoryProvider {
 	private static final Component FILTER_NAME = Component.text("Filter", NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, State.FALSE);
+	private static final int ITEMS_PER_PAGE = 9 * 5;
 
 	private final SmartInventory inventory;
 	private final AllObtainableItems plugin;
 	private final Filters filterEnum;
 	private final Filter filter;
 	private final Player originalPlayer;
+	private final AtomicInteger page = new AtomicInteger(0);
 	private ClickableItem[] items = null;
 	private List<Component> filterLore = null;
 	private List<BaseComponent[]> bungeeFilterLore = null;
@@ -87,28 +90,26 @@ public class ItemMenu implements InventoryProvider {
 	@SuppressWarnings("deprecation")
 	@Override
 	public void init(Player player, InventoryContents contents) {
-		// TODO: pagination is displaying only up to the Activator Rail for all/uncollected items
-		Pagination pagination = contents.pagination();
-		pagination.setItemsPerPage(9 * 5);
-		pagination.setItems(getItems());
-		pagination.addToIterator(contents.newIterator(Type.HORIZONTAL, 0, 0));
+		final int curPage = page.get();
+		final ClickableItem[] items = getItems();
+		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
+			int index = curPage * ITEMS_PER_PAGE + i;
+			if (index >= items.length)
+				break;
+			ClickableItem item = items[index];
+			contents.set(i / 9, i % 9, item);
+		}
 
 		// previous page
-		if (!pagination.isFirst()) {
-			int previousPage = pagination.previous().getPage();
-			contents.set(5, 0, ClickableItem.of(pageItemStack(previousPage), $ -> {
-				inventory.open(player, previousPage);
-				playClickSound(player);
-			}));
-		}
+		if (curPage > 0)
+			contents.set(5, 0, pageClickableItem(curPage - 1, player, contents));
+		else
+			contents.set(5, 0, ClickableItem.empty(new ItemStack(Material.AIR)));
 		// next page
-		if (!pagination.isLast()) {
-			int nextPage = pagination.next().getPage();
-			contents.set(5, 8, ClickableItem.of(pageItemStack(nextPage), $ -> {
-				inventory.open(player, nextPage);
-				playClickSound(player);
-			}));
-		}
+		if (curPage < (items.length / ITEMS_PER_PAGE))
+			contents.set(5, 8, pageClickableItem(curPage + 1, player, contents));
+		else
+			contents.set(5, 8, ClickableItem.empty(new ItemStack(Material.AIR)));
 		// filter
 		ItemStack item = new ItemStack(Material.HOPPER);
 		ItemMeta meta = item.getItemMeta();
@@ -189,7 +190,7 @@ public class ItemMenu implements InventoryProvider {
 	public ItemStack pageItemStack(int page) {
 		ItemStack item = new ItemStack(Material.ARROW);
 		ItemMeta meta = item.getItemMeta();
-		Component component = Component.text("Page " + (page + 1)).decoration(TextDecoration.ITALIC, false);
+		Component component = Component.text("Page " + (page + 1), NamedTextColor.DARK_AQUA).decoration(TextDecoration.ITALIC, false);
 		if (PaperLib.isPaper())
 			meta.displayName(component);
 		else if (PaperLib.isSpigot())
@@ -199,8 +200,16 @@ public class ItemMenu implements InventoryProvider {
 		item.setItemMeta(meta);
 		return item;
 	}
+	
+	public ClickableItem pageClickableItem(int page, Player player, InventoryContents contents) {
+		return ClickableItem.of(pageItemStack(page), $ -> {
+			this.page.set(page);
+			init(player, contents);
+			playClickSound(player);
+		});
+	}
 
 	private void playClickSound(Player player) {
-		player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 0.8f, 2);
+		player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.2f, 1);
 	}
 }
