@@ -97,7 +97,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			Material.KNOWLEDGE_BOOK,
 			Material.DEBUG_STICK,
 			Material.PLAYER_HEAD,
-			Material.GOAT_HORN,
+			//Material.GOAT_HORN, // TODO: exclude goat horns (PaperMC/Paper#8157)
 			Material.BUNDLE
 	);
 
@@ -153,7 +153,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			}
 		}
 		// TODO: "explorer" map (buried treasure/mansion/monument)
-		// TODO: goat horns
+		// TODO: goat horns (PaperMC/Paper#8157)
 
 		return key.toString();
 	}
@@ -194,7 +194,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			items.add(item);
 		}
 		// TODO: "explorer" map (buried treasure/mansion/monument)
-		// TODO: goat horns
+		// TODO: goat horns (PaperMC/Paper#8157)
 
 		return ALL_ITEMS = items.stream().sorted(Comparator.comparing(item -> plainSerializer.serialize(getDisplayName(item)))).toList();
 	}
