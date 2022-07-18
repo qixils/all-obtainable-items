@@ -6,7 +6,6 @@ import cloud.commandframework.execution.AsynchronousCommandExecutionCoordinator;
 import cloud.commandframework.paper.PaperCommandManager;
 import fr.minuskube.inv.InventoryManager;
 import io.papermc.lib.PaperLib;
-import io.papermc.paper.inventory.ItemRarity;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.bossbar.BossBar.Color;
@@ -27,19 +26,15 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Axolotl;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -84,7 +79,6 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			Material.SPLASH_POTION,
 			Material.TIPPED_ARROW,
 			Material.ENCHANTED_BOOK,
-			Material.AXOLOTL_BUCKET,
 			Material.SUSPICIOUS_STEW,
 			Material.AIR,
 			Material.CAVE_AIR,
@@ -101,7 +95,10 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			Material.LIGHT,
 			Material.JIGSAW,
 			Material.KNOWLEDGE_BOOK,
-			Material.DEBUG_STICK
+			Material.DEBUG_STICK,
+			Material.PLAYER_HEAD,
+			Material.GOAT_HORN,
+			Material.BUNDLE
 	);
 
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
@@ -154,13 +151,9 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 								.sorted()
 								.collect(Collectors.joining(",")));
 			}
-		} else if (meta instanceof AxolotlBucketMeta bucket) {
-			// TODO: loren doesn't like this one :(
-			if (bucket.hasVariant()) {
-				key.append('|').append(bucket.getVariant().name().toLowerCase(Locale.ENGLISH));
-			}
 		}
 		// TODO: "explorer" map (buried treasure/mansion/monument)
+		// TODO: goat horns
 
 		return key.toString();
 	}
@@ -200,14 +193,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			item.setItemMeta(meta);
 			items.add(item);
 		}
-		for (Axolotl.Variant variant : Axolotl.Variant.values()) {
-			ItemStack item = new ItemStack(Material.AXOLOTL_BUCKET);
-			AxolotlBucketMeta meta = (AxolotlBucketMeta) item.getItemMeta();
-			meta.setVariant(variant);
-			item.setItemMeta(meta);
-			items.add(item);
-		}
 		// TODO: "explorer" map (buried treasure/mansion/monument)
+		// TODO: goat horns
 
 		return ALL_ITEMS = items.stream().sorted(Comparator.comparing(item -> plainSerializer.serialize(getDisplayName(item)))).toList();
 	}
