@@ -95,9 +95,7 @@ public class ItemMenu implements InventoryProvider {
 		final List<ClickableItem> items = getItems();
 		for (int i = 0; i < ITEMS_PER_PAGE; i++) {
 			int index = curPage * ITEMS_PER_PAGE + i;
-			if (index >= items.size())
-				break;
-			ClickableItem item = items.get(index);
+			ClickableItem item = index < items.size() ? items.get(index) : ClickableItem.empty(new ItemStack(Material.AIR));
 			contents.set(i / 9, i % 9, item);
 		}
 

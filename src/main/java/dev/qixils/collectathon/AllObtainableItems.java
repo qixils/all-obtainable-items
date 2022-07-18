@@ -6,6 +6,7 @@ import cloud.commandframework.execution.AsynchronousCommandExecutionCoordinator;
 import cloud.commandframework.paper.PaperCommandManager;
 import fr.minuskube.inv.InventoryManager;
 import io.papermc.lib.PaperLib;
+import io.papermc.paper.inventory.ItemRarity;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.bossbar.BossBar.Color;
@@ -95,7 +96,12 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			Material.REPEATING_COMMAND_BLOCK,
 			Material.STRUCTURE_BLOCK,
 			Material.STRUCTURE_VOID,
-			Material.SPAWNER
+			Material.SPAWNER,
+			Material.BARRIER,
+			Material.LIGHT,
+			Material.JIGSAW,
+			Material.KNOWLEDGE_BOOK,
+			Material.DEBUG_STICK
 	);
 
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
@@ -174,6 +180,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				+ Enchantment.values().length;
 		List<ItemStack> items = new ArrayList<>(initialCapacity);
 		for (Material material : Material.values()) {
+			if (!material.isItem())
+				continue;
 			if (material.isLegacy())
 				continue;
 			if (EXCLUDE.contains(material))
