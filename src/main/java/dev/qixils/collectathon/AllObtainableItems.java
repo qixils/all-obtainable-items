@@ -35,6 +35,7 @@ import org.bukkit.event.inventory.CraftItemEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -53,8 +54,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -160,7 +163,6 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	// non-static stuff
 
-	@SuppressWarnings("deprecation")
 	public @NotNull List<ItemStack> getAllItems() {
 		if (ALL_ITEMS != null)
 			return ALL_ITEMS;
@@ -185,7 +187,15 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		}
 
 		// TODO potions
-		// TODO sussy stew
+		// suspicious stew
+		Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
+		while (recipes.hasNext()) {
+			Recipe recipe = recipes.next();
+			ItemStack result = recipe.getResult();
+			if (result.getType() == Material.SUSPICIOUS_STEW)
+				items.add(result);
+		}
+		// enchants
 		for (Enchantment enchantment : Enchantment.values()) {
 			ItemStack item = new ItemStack(Material.ENCHANTED_BOOK);
 			EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
@@ -254,7 +264,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			builder.key("item." + subKey);
 		}
 		// append misc info
-		// TODO
+		// TODO append misc info
 		return builder.build();
 	}
 
@@ -456,7 +466,6 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onCraftItemEvent(CraftItemEvent event) {
-		// TODO: test to make sure this does not fire every time a recipe is completed in the crafting matrix
 		if (event.getWhoClicked() instanceof Player player) {
 			collect(player, event.getRecipe().getResult());
 		}
