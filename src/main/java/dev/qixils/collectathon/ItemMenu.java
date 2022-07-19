@@ -51,7 +51,7 @@ public class ItemMenu implements InventoryProvider {
 	private String legacyFilterName = null;
 
 	public ItemMenu(@NotNull AllObtainableItems plugin, @NotNull Player player, @Nullable Filters filter) {
-		this.filterEnum = Objects.requireNonNullElse(filter, Filters.SHOW_ALL);
+		this.filterEnum = Objects.requireNonNullElse(filter, Filters.HIDE_COLLECTED);
 		this.originalPlayer = player;
 		this.plugin = plugin;
 		this.filter = this.filterEnum.createFilter(plugin, player);

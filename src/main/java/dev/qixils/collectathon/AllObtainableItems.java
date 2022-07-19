@@ -187,7 +187,7 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		}
 
 		// TODO potions
-		// suspicious stew
+		// suspicious stew | TODO: this isn't working >.>
 		Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
 		while (recipes.hasNext()) {
 			Recipe recipe = recipes.next();

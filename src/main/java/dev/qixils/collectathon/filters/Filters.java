@@ -10,19 +10,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum Filters {
-	SHOW_ALL("Show All") {
-		private final Filter filter = new AbstractFilter() {
-			@Override
-			public boolean test(ItemStack item) {
-				return false;
-			}
-		};
-
-		@Override
-		public Filter createFilter(AllObtainableItems plugin, Player player) {
-			return filter;
-		}
-	},
 	HIDE_COLLECTED("Hide Collected") {
 		@Override
 		public Filter createFilter(AllObtainableItems plugin, Player player) {
