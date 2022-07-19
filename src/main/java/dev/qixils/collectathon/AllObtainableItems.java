@@ -186,7 +186,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			items.add(new ItemStack(material));
 		}
 
-		// TODO potions
+		// TODO potions (including water, mundane, thick, awkward)
+		// TODO tipped arrows (not including water, mundane, thick, awkward)
 		// suspicious stew | TODO: this isn't working >.>
 		Iterator<Recipe> recipes = Bukkit.getServer().recipeIterator();
 		while (recipes.hasNext()) {
