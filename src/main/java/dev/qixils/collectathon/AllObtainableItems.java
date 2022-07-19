@@ -149,8 +149,8 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 		} else if (meta instanceof EnchantmentStorageMeta enchantments) {
 			if (enchantments.hasStoredEnchants()) {
 				key.append('|')
-						.append(enchantments.getStoredEnchants().entrySet().stream()
-								.map(entry -> entry.getKey().getKey().getKey() + ':' + entry.getValue())
+						.append(enchantments.getStoredEnchants().keySet().stream()
+								.map(integer -> integer.getKey().getKey())
 								.sorted()
 								.collect(Collectors.joining(",")));
 			}
