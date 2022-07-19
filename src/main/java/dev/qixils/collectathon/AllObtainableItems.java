@@ -39,6 +39,7 @@ import org.bukkit.inventory.Recipe;
 import org.bukkit.inventory.meta.AxolotlBucketMeta;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SuspiciousStewMeta;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -101,7 +102,14 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 			Material.DEBUG_STICK,
 			Material.PLAYER_HEAD,
 			//Material.GOAT_HORN, // TODO: exclude goat horns (PaperMC/Paper#8157)
-			Material.BUNDLE
+			Material.BUNDLE,
+			Material.BUDDING_AMETHYST,
+			Material.FARMLAND,
+			Material.DIRT_PATH,
+			Material.PETRIFIED_OAK_SLAB,
+			Material.END_PORTAL_FRAME,
+			Material.CHORUS_PLANT,
+			Material.REINFORCED_DEEPSLATE
 	);
 
 	private static @MonotonicNonNull List<ItemStack> ALL_ITEMS = null;
@@ -154,8 +162,10 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 								.sorted()
 								.collect(Collectors.joining(",")));
 			}
+		} else if (meta instanceof MapMeta map) {
+			if (map.hasLocationName())
+				key.append('|').append(map.getLocationName());
 		}
-		// TODO: "explorer" map (buried treasure/mansion/monument)
 		// TODO: goat horns (PaperMC/Paper#8157)
 
 		return key.toString();
@@ -174,6 +184,11 @@ public final class AllObtainableItems extends JavaPlugin implements Listener {
 				+ (PotionEffectType.values().length * 4)
 				+ Enchantment.values().length;
 		List<ItemStack> items = new ArrayList<>(initialCapacity);
+		// TODO: instead of iterating through materials, add items from:
+		//  - crafting recipe results
+		//  - crafting recipe ingredients
+		//  - loot table drops (simulate a bunch of loot table results with varying levels of luck & looting)
+		//  - Block#getDrops(ItemStack) with fortune and silk touch modifiers (and some iterations of the fortune just to be safe)
 		for (Material material : Material.values()) {
 			if (!material.isItem())
 				continue;
